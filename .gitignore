@@ -12,6 +12,9 @@ yarn.lock
 .env.*.local
 .env.example
 
+#security
+skillforge-backend/src/config/*.json
+
 
 # IDE & Editor
 .vscode/*
@@ -51,3 +54,6 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+
+
+

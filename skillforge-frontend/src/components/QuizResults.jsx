@@ -1,6 +1,20 @@
 import React from "react";
+import { getCourseProgress } from "../utils/progressApi";
 
 export default function QuizResults({ results, courseId }) {
+  useEffect(() => {
+    const getExistingResult = async () => {
+      try {
+        const existingResult = await getCourseProgress(courseId);
+        if (!existingResult) {
+          results = existingResult;
+        }
+      } catch (error) {
+        console.error("Failed to check module unlock status:", error);
+      }
+    };
+  }, [courseId]);
+
   if (!results) return null;
 
   const resultColor = results.passed ? "green" : "red";
@@ -32,7 +46,9 @@ export default function QuizResults({ results, courseId }) {
         <div className="grid gap-6 md:grid-cols-3 max-w-2xl mx-auto">
           <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
             <p className="text-sm text-white/80 mb-1">Your Score</p>
-            <p className="text-3xl font-bold">{results.score}%</p>
+            <p className="text-3xl font-bold">
+              {results.score || results.quizScore}%
+            </p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
             <p className="text-sm text-white/80 mb-1">Passing Score</p>
@@ -53,7 +69,7 @@ export default function QuizResults({ results, courseId }) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-700">Score Breakdown</span>
             <span className="font-semibold text-slate-900">
-              {results.score}%
+              {results.score || results.quizScore}%
             </span>
           </div>
           <div className="h-3 bg-slate-300 rounded-full overflow-hidden">

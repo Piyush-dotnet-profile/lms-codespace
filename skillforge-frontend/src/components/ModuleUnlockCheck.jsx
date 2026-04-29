@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { checkModuleUnlock } from "../utils/progressApi";
+import { useNavigate } from "react-router-dom";
 
-export default function ModuleUnlockCheck({ courseId, moduleId, children }) {
+export default function ModuleUnlockCheck({
+  courseId,
+  moduleId,
+  previousModule,
+  children,
+}) {
   const [isUnlocked, setIsUnlocked] = useState(null);
   const [unlockInfo, setUnlockInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkUnlock = async () => {
@@ -80,6 +87,18 @@ export default function ModuleUnlockCheck({ courseId, moduleId, children }) {
             </div>
           </div>
         )}
+        <div className="border-t border-orange-100 pt-6 flex flex-col gap-3">
+          {
+            <button
+              onClick={() =>
+                navigate(`/courses/${courseId}/modules/${previousModule}`)
+              }
+              className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600"
+            >
+              ← Previous Module
+            </button>
+          }
+        </div>
       </div>
     );
   }

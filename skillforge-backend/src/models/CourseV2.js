@@ -79,7 +79,7 @@ const quizSchema = new mongoose.Schema(
   { timestamps: false },
 );
 
-const courseSchema = new mongoose.Schema(
+const courseV2Schema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -118,7 +118,7 @@ const courseSchema = new mongoose.Schema(
     enrolledUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "UserV2",
       },
     ],
     rating: { type: Number, min: 0, max: 5, default: 0 },
@@ -140,4 +140,4 @@ const courseSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-export default mongoose.model("Course", courseSchema, "courses_v2");
+export default mongoose.model("CourseV2", courseV2Schema, "courses_v2");

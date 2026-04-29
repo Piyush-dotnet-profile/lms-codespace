@@ -2,6 +2,7 @@ import express from "express";
 import Course from "../models/Course.js";
 import User from "../models/User.js";
 import { authenticateToken, optionalAuth } from "../middleware/auth.js";
+import { drive } from "../config/drive.js";
 
 const router = express.Router();
 
@@ -642,6 +643,53 @@ router.post("/:courseId/quiz", authenticateToken, async (req, res) => {
     });
   }
 });
+
+// Express route idea
+router.get("/media/drive/:fileId", authenticateToken, async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const range = req.headers.range;
+
+    if (!range) {
+      return res.status(416).send("Requires Range header");
+    }
+
+    const meta = await drive.files.get({
+      fileId,
+      fields: "size,mimeType",
+    });
+
+    const fileSize = Number(meta.data.size);
+    const mimeType = meta.data.mimeType || "video/mp4";
+
+    const start = Number(range.replace(/\D/g, ""));
+    const CHUNK_SIZE = 10 ** 6;
+    const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
+
+    const response = await drive.files.get(
+      { fileId, alt: "media" },
+      {
+        responseType: "stream",
+        headers: {
+          Range: `bytes=${start}-${end}`,
+        },
+      },
+    );
+
+    res.writeHead(206, {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": end - start + 1,
+      "Content-Type": mimeType,
+    });
+
+    response.data.pipe(res);
+  } catch (error) {
+    console.error("Streaming error:", error);
+    res.status(500).json({ message: "Unable to stream video" });
+  }
+});
+
 // GET /api/courses - Get all published courses
 router.get("/", optionalAuth, async (req, res) => {
   try {

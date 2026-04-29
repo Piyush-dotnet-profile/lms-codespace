@@ -71,7 +71,7 @@ export default function ModuleDetail() {
         try {
           const progressData = await getCourseProgress(courseId);
           const currentModuleProgress = progressData.modules.find(
-            (m) => m.moduleId === matchedModule._id
+            (m) => m.moduleId === matchedModule._id,
           );
           setModuleProgress(currentModuleProgress);
         } catch (progressErr) {
@@ -132,7 +132,7 @@ export default function ModuleDetail() {
       // Refresh progress data
       const progressData = await getCourseProgress(courseId);
       const currentModuleProgress = progressData.modules.find(
-        (m) => m.moduleId === module._id
+        (m) => m.moduleId === module._id,
       );
       setModuleProgress(currentModuleProgress);
 
@@ -182,7 +182,11 @@ export default function ModuleDetail() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <ModuleUnlockCheck courseId={courseId} moduleId={moduleId}>
+        <ModuleUnlockCheck
+          courseId={courseId}
+          moduleId={moduleId}
+          previousModule={previousModule?._id || previousModule?.id}
+        >
           {/* Hero Section */}
           <section className="rounded-[2rem] bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-10 text-white shadow-xl shadow-orange-200 sm:px-10 mb-10">
             <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
@@ -194,7 +198,8 @@ export default function ModuleDetail() {
                   {module?.title || "Module"}
                 </h1>
                 <p className="mt-4 max-w-3xl text-white/90 leading-7">
-                  {module?.description || "Module details and content are shown below."}
+                  {module?.description ||
+                    "Module details and content are shown below."}
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
@@ -278,26 +283,31 @@ export default function ModuleDetail() {
                 </p>
 
                 {(module?.topics || module?.outcomes || module?.points) &&
-                  (module.topics || module.outcomes || module.points).length > 0 && (
+                  (module.topics || module.outcomes || module.points).length >
+                    0 && (
                     <div className="mt-8">
                       <h3 className="text-lg font-semibold text-slate-900">
                         Learning Points
                       </h3>
                       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                        {(module.topics || module.outcomes || module.points).map(
-                          (item, index) => (
-                            <div
-                              key={index}
-                              className="rounded-2xl border border-orange-100 bg-orange-50/60 p-5"
-                            >
-                              <p className="font-medium text-slate-800">
-                                {typeof item === "string"
-                                  ? item
-                                  : item.title || item.name || `Point ${index + 1}`}
-                              </p>
-                            </div>
-                          ),
-                        )}
+                        {(
+                          module.topics ||
+                          module.outcomes ||
+                          module.points
+                        ).map((item, index) => (
+                          <div
+                            key={index}
+                            className="rounded-2xl border border-orange-100 bg-orange-50/60 p-5"
+                          >
+                            <p className="font-medium text-slate-800">
+                              {typeof item === "string"
+                                ? item
+                                : item.title ||
+                                  item.name ||
+                                  `Point ${index + 1}`}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -322,7 +332,11 @@ export default function ModuleDetail() {
                   </div>
                   {progress === 100 && (
                     <div className="mt-3 flex items-center gap-2 text-green-700">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
                         <path
                           fillRule="evenodd"
                           d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -378,8 +392,10 @@ export default function ModuleDetail() {
                       onClick={() =>
                         navigate(
                           `/courses/${courseId}/modules/${
-                            previousModule._id || previousModule.id || moduleIndex - 1
-                          }`
+                            previousModule._id ||
+                            previousModule.id ||
+                            moduleIndex - 1
+                          }`,
                         )
                       }
                       className="rounded-full border border-orange-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-orange-50"
@@ -393,7 +409,7 @@ export default function ModuleDetail() {
                         navigate(
                           `/courses/${courseId}/modules/${
                             nextModule._id || nextModule.id || moduleIndex + 1
-                          }`
+                          }`,
                         )
                       }
                       className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600"
@@ -406,84 +422,6 @@ export default function ModuleDetail() {
             </div>
           </section>
         </ModuleUnlockCheck>
-      </main>
-    </div>
-  );
-}
-
-                        {typeof item === "string"
-                          ? item
-                          : item.title || item.name || `Point ${index + 1}`}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-3xl border border-orange-100 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">
-              Details
-            </p>
-
-            <div className="mt-6 space-y-4">
-              <div className="rounded-2xl bg-orange-50/60 p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">
-                  Course
-                </p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {course.title}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-orange-50/60 p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">
-                  Module Status
-                </p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {progress === 100 ? "Completed" : "In progress"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-orange-50/60 p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">
-                  Module Number
-                </p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {moduleIndex >= 0 ? moduleIndex + 1 : "-"}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3">
-              {previousModule && (
-                <button
-                  onClick={() =>
-                    navigate(
-                      `/courses/${courseId}/modules/${previousModule._id || previousModule.id || moduleIndex - 1}`,
-                    )
-                  }
-                  className="rounded-full border border-orange-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-orange-50"
-                >
-                  Previous Module
-                </button>
-              )}
-              {nextModule && (
-                <button
-                  onClick={() =>
-                    navigate(
-                      `/courses/${courseId}/modules/${nextModule._id || nextModule.id || moduleIndex + 1}`,
-                    )
-                  }
-                  className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600"
-                >
-                  Next Module
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
       </main>
     </div>
   );

@@ -118,7 +118,7 @@ export default function VideoPlayer({
       <div className="relative bg-black aspect-video">
         <video
           ref={videoRef}
-          src={video.url}
+          src={`/api/media/drive/${video.url}`}
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           className="w-full h-full"

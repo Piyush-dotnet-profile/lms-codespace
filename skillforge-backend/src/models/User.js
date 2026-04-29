@@ -1,6 +1,67 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const moduleProgressSchema = new mongoose.Schema(
+  {
+    progress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    videoProgress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+    completedAt: Date,
+    documentsDownloaded: [String],
+  },
+  { _id: false },
+);
+
+const courseProgressSchema = new mongoose.Schema(
+  {
+    modules: {
+      type: Map,
+      of: moduleProgressSchema,
+      default: new Map(),
+    },
+    overallProgress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    quizCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    quizScore: Number,
+    quizAttempts: [
+      {
+        answers: {
+          type: Map,
+          of: String,
+          default: new Map(),
+        },
+        score: Number,
+        completedAt: Date,
+      },
+    ],
+    enrolledAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -14,7 +75,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(.\w{2,3})+$/,
         "Please provide a valid email",
       ],
     },
@@ -22,7 +83,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please provide a password"],
       minlength: 6,
-      select: false, // Don't return password by default
+      select: false,
     },
     enrolledCourses: [
       {
@@ -32,56 +93,7 @@ const userSchema = new mongoose.Schema(
     ],
     progress: {
       type: Map,
-      of: new mongoose.Schema(
-        {
-          modules: {
-            type: Map,
-            of: {
-              progress: {
-                type: Number,
-                default: 0,
-                min: 0,
-                max: 100,
-              },
-              videoProgress: {
-                type: Number,
-                default: 0,
-                min: 0,
-                max: 100,
-              },
-              completed: {
-                type: Boolean,
-                default: false,
-              },
-              completedAt: Date,
-              documentsDownloaded: [String], // Store document IDs
-            },
-          },
-          overallProgress: {
-            type: Number,
-            default: 0,
-            min: 0,
-            max: 100,
-          },
-          quizCompleted: {
-            type: Boolean,
-            default: false,
-          },
-          quizScore: Number,
-          quizAttempts: [
-            {
-              answers: Map,
-              score: Number,
-              completedAt: Date,
-            },
-          ],
-          enrolledAt: {
-            type: Date,
-            default: Date.now,
-          },
-        },
-        { _id: false },
-      ),
+      of: courseProgressSchema,
       default: new Map(),
     },
     createdAt: {
@@ -92,7 +104,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
@@ -107,15 +118,14 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-// Method to compare password
 userSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
-// Remove password from response
 userSchema.methods.toJSON = function () {
-  const { password, ...user } = this.toObject();
-  return user;
+  const userObject = this.toObject();
+  delete userObject.password;
+  return userObject;
 };
 
-export default mongoose.model("User", userSchema);
+export default mongoose.model("User", userSchema, "users_v2");

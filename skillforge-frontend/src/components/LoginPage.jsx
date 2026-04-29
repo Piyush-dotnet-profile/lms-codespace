@@ -7,8 +7,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  if (isAuthenticated) {
+    navigate("/dashboard");
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();

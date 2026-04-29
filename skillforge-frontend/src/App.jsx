@@ -33,6 +33,7 @@ function App() {
           />
           <Route path="/courses/:courseId/quiz" element={<QuizPage />} />
         </Routes>
+        <Route path="/courses/:courseId"  } />
       </Router>
     </AuthProvider>
   );
