@@ -3,13 +3,14 @@ import { checkQuizUnlock, getQuiz, submitQuiz } from "../utils/progressApi";
 import QuizResults from "./QuizResults";
 
 export default function Quiz({ courseId }) {
-  const [quizState, setQuizState] = useState("checking"); // checking, locked, loading, ready, submitting, completed
+  const [quizState, setQuizState] = useState("checking"); // checking, locked, loading, ready, submitting, completed, attemptsExceeded
   const [quiz, setQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
   const [results, setResults] = useState(null);
   const [unlockInfo, setUnlockInfo] = useState(null);
   const [error, setError] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [attemptsRemaining, setAttemptsRemaining] = useState(0);
 
   // Check if quiz is unlocked
   useEffect(() => {
@@ -17,9 +18,16 @@ export default function Quiz({ courseId }) {
       try {
         const unlockStatus = await checkQuizUnlock(courseId);
         setUnlockInfo(unlockStatus);
+        setAttemptsRemaining(unlockStatus.attemptsRemaining || 0);
 
         if (!unlockStatus.isUnlocked) {
           setQuizState("locked");
+          return;
+        }
+
+        // Check if max attempts reached
+        if (unlockStatus.maxAttemptsReached) {
+          setQuizState("attemptsExceeded");
           return;
         }
 
@@ -168,6 +176,58 @@ export default function Quiz({ courseId }) {
     return <QuizResults results={results} courseId={courseId} />;
   }
 
+  // Attempts Exceeded state
+  if (quizState === "attemptsExceeded") {
+    return (
+      <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-8 text-center">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 mb-4">
+          <svg
+            className="w-8 h-8 text-red-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4v2m0 4v2m0-4v2m0-4v2m6-8a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-red-900 mb-2">
+          Maximum Attempts Reached
+        </h3>
+        <p className="text-red-800 mb-6">
+          You have exhausted all 3 quiz attempts. You cannot retake this quiz
+          anymore.
+        </p>
+        {unlockInfo && (
+          <div className="space-y-2 text-sm text-red-700">
+            <p>
+              Total attempts used:{" "}
+              <span className="font-semibold">{unlockInfo.totalAttempts}</span>
+            </p>
+            <p>
+              Best score:{" "}
+              <span className="font-semibold">
+                {unlockInfo.bestScore || "N/A"}
+              </span>
+            </p>
+          </div>
+        )}
+        <div className="mt-6">
+          <button
+            onClick={() => window.history.back()}
+            className="px-6 py-3 rounded-full bg-red-600 text-white font-medium hover:bg-red-700 transition"
+          >
+            Go Back to Course
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Ready state
   if (quizState === "ready" && quiz) {
     const question = quiz.questions[currentQuestion];
@@ -186,9 +246,16 @@ export default function Quiz({ courseId }) {
             <span>
               Question {currentQuestion + 1} of {quiz.totalQuestions}
             </span>
-            <span className="bg-white/20 px-3 py-1 rounded-full">
-              {totalAnswered}/{quiz.totalQuestions} answered
-            </span>
+            <div className="flex items-center gap-4">
+              {attemptsRemaining < 3 && (
+                <span className="bg-white/20 px-3 py-1 rounded-full">
+                  Attempts remaining: {attemptsRemaining}/3
+                </span>
+              )}
+              <span className="bg-white/20 px-3 py-1 rounded-full">
+                {totalAnswered}/{quiz.totalQuestions} answered
+              </span>
+            </div>
           </div>
           <div className="mt-4 h-2 bg-white/20 rounded-full overflow-hidden">
             <div

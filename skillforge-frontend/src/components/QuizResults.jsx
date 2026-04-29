@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { getCourseProgress } from "../utils/progressApi";
 
 export default function QuizResults({ results, courseId }) {
@@ -6,13 +6,17 @@ export default function QuizResults({ results, courseId }) {
     const getExistingResult = async () => {
       try {
         const existingResult = await getCourseProgress(courseId);
-        if (!existingResult) {
-          results = existingResult;
+        if (existingResult && !results) {
+          // Results already loaded
         }
       } catch (error) {
-        console.error("Failed to check module unlock status:", error);
+        console.error("Failed to fetch quiz results:", error);
       }
     };
+
+    if (courseId) {
+      getExistingResult();
+    }
   }, [courseId]);
 
   if (!results) return null;

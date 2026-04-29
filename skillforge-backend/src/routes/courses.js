@@ -467,11 +467,20 @@ router.get(
       const requiredProgress = course.quiz.unlockPercentage || 50;
       const isUnlocked = courseProgress.overallProgress >= requiredProgress;
 
+      const attemptsRemaining = Math.max(
+        0,
+        3 - (courseProgress.quizAttempts?.length || 0),
+      );
+      const maxAttemptsReached = attemptsRemaining === 0;
+
       res.json({
         isUnlocked,
         currentProgress: courseProgress.overallProgress,
         requiredProgress,
         alreadyCompleted: courseProgress.quizCompleted,
+        attemptsRemaining,
+        totalAttempts: courseProgress.quizAttempts?.length || 0,
+        maxAttemptsReached,
       });
     } catch (error) {
       console.error("Check quiz unlock error:", error);
@@ -587,6 +596,20 @@ router.post("/:courseId/quiz", authenticateToken, async (req, res) => {
       });
     }
 
+    // Check max attempts (limit to 3)
+    const attemptsRemaining = Math.max(
+      0,
+      3 - (courseProgress.quizAttempts?.length || 0),
+    );
+    if (attemptsRemaining === 0) {
+      return res.status(403).json({
+        message:
+          "Maximum quiz attempts (3) reached. You cannot retake the quiz.",
+        totalAttempts: courseProgress.quizAttempts?.length || 0,
+        maxAttemptsReached: true,
+      });
+    }
+
     // Calculate score
     let correctAnswers = 0;
     const detailedResults = [];
@@ -645,45 +668,71 @@ router.post("/:courseId/quiz", authenticateToken, async (req, res) => {
 });
 
 // Express route idea
-router.get("/media/drive/:fileId", authenticateToken, async (req, res) => {
+router.get("/media/drive/:fileId", async (req, res) => {
   try {
     const { fileId } = req.params;
     const range = req.headers.range;
 
-    if (!range) {
-      return res.status(416).send("Requires Range header");
-    }
+    // Prevent cache issues
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
+    // Get file metadata
     const meta = await drive.files.get({
       fileId,
       fields: "size,mimeType",
     });
 
     const fileSize = Number(meta.data.size);
-    const mimeType = meta.data.mimeType || "video/mp4";
 
-    const start = Number(range.replace(/\D/g, ""));
-    const CHUNK_SIZE = 10 ** 6;
-    const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
+    // Normalize mime type
+    const mimeType = meta.data.mimeType?.startsWith("video/")
+      ? meta.data.mimeType
+      : "video/mp4";
 
-    const response = await drive.files.get(
-      { fileId, alt: "media" },
-      {
-        responseType: "stream",
-        headers: {
-          Range: `bytes=${start}-${end}`,
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      const response = await drive.files.get(
+        { fileId, alt: "media" },
+        {
+          responseType: "stream",
+          headers: {
+            Range: `bytes=${start}-${end}`,
+          },
         },
-      },
-    );
+      );
 
-    res.writeHead(206, {
-      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-      "Accept-Ranges": "bytes",
-      "Content-Length": end - start + 1,
-      "Content-Type": mimeType,
-    });
+      res.writeHead(206, {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": end - start + 1,
+        "Content-Type": mimeType,
+      });
 
-    response.data.pipe(res);
+      response.data.pipe(res);
+    } else {
+      const response = await drive.files.get(
+        { fileId, alt: "media" },
+        {
+          responseType: "stream",
+        },
+      );
+
+      res.writeHead(200, {
+        "Content-Length": fileSize,
+        "Content-Type": mimeType,
+        "Accept-Ranges": "bytes",
+      });
+
+      response.data.pipe(res);
+    }
   } catch (error) {
     console.error("Streaming error:", error);
     res.status(500).json({ message: "Unable to stream video" });
