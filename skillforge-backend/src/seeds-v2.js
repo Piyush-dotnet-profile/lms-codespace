@@ -307,6 +307,14 @@ const createSampleUsers = (courseRecords) => {
 
   return [
     {
+      name: "Admin User",
+      email: "admin@skillforge.com",
+      password: "AdminPassword123",
+      role: "admin",
+      enrolledCourses: [],
+      progress: new Map(),
+    },
+    {
       name: "Emma Carter",
       email: "emma.carter@example.com",
       password: "Password123",

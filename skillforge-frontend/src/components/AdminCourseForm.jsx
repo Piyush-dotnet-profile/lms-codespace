@@ -25,9 +25,32 @@ export default function AdminCourseForm({ course, onSave, onCancel }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Helper function to normalize module structure
+  const normalizeModule = (module) => {
+    return {
+      ...module,
+      video: module.video || {
+        title: "",
+        url: "",
+        duration: 0,
+      },
+      documents: Array.isArray(module.documents)
+        ? module.documents.map((doc) => ({
+            title: doc.title || "",
+            downloadUrl: doc.downloadUrl || "",
+          }))
+        : [],
+    };
+  };
+
   useEffect(() => {
     if (course) {
-      setFormData(course);
+      // Normalize modules when loading course
+      const normalizedCourse = {
+        ...course,
+        modules: (course.modules || []).map(normalizeModule),
+      };
+      setFormData(normalizedCourse);
     }
   }, [course]);
 
@@ -116,7 +139,7 @@ export default function AdminCourseForm({ course, onSave, onCancel }) {
           content: "",
           video: {
             title: "",
-            url: "", // This is the Drive File ID
+            url: "", // This is the Cloudinary Stream URL
             duration: 0,
           },
           documents: [],
@@ -139,6 +162,41 @@ export default function AdminCourseForm({ course, onSave, onCancel }) {
     setFormData((prev) => {
       const modules = [...prev.modules];
       modules[index].video = { ...modules[index].video, [field]: value };
+      return { ...prev, modules };
+    });
+  };
+
+  const addModuleDocument = (index) => {
+    setFormData((prev) => {
+      const modules = [...prev.modules];
+      modules[index].documents = [
+        ...(modules[index].documents || []),
+        {
+          title: "",
+          downloadUrl: "",
+        },
+      ];
+      return { ...prev, modules };
+    });
+  };
+
+  const updateModuleDocument = (moduleIndex, docIndex, field, value) => {
+    setFormData((prev) => {
+      const modules = [...prev.modules];
+      modules[moduleIndex].documents[docIndex] = {
+        ...modules[moduleIndex].documents[docIndex],
+        [field]: value,
+      };
+      return { ...prev, modules };
+    });
+  };
+
+  const removeModuleDocument = (moduleIndex, docIndex) => {
+    setFormData((prev) => {
+      const modules = [...prev.modules];
+      modules[moduleIndex].documents = modules[moduleIndex].documents.filter(
+        (_, i) => i !== docIndex,
+      );
       return { ...prev, modules };
     });
   };
@@ -441,14 +499,84 @@ export default function AdminCourseForm({ course, onSave, onCancel }) {
                         onChange={(e) =>
                           updateModuleVideo(mIndex, "url", e.target.value)
                         }
-                        placeholder="Google Drive File ID (not full URL)"
+                        placeholder="Cloudinary stream URL"
                         className="px-4 py-3 rounded-lg border border-slate-200 focus:border-orange-500 focus:outline-none"
                       />
                     </div>
                     <p className="text-xs text-slate-500 mt-2">
-                      💡 Tip: Paste only the File ID from the Google Drive URL,
-                      not the full URL
+                      💡 Tip: Paste the Cloudinary streaming URL for your video
                     </p>
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-slate-900">
+                        Documents & PDFs
+                      </h5>
+                      <button
+                        type="button"
+                        onClick={() => addModuleDocument(mIndex)}
+                        className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition text-xs font-semibold"
+                      >
+                        + Add Document
+                      </button>
+                    </div>
+
+                    {!module.documents || module.documents.length === 0 ? (
+                      <p className="text-sm text-slate-500">No documents yet</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {module.documents.map((doc, docIndex) => (
+                          <div
+                            key={docIndex}
+                            className="rounded-lg border border-slate-200 p-3 space-y-2 bg-slate-50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold text-slate-900">
+                                Document {docIndex + 1}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeModuleDocument(mIndex, docIndex)
+                                }
+                                className="text-red-600 hover:text-red-700 text-xs font-semibold"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={doc.title}
+                              onChange={(e) =>
+                                updateModuleDocument(
+                                  mIndex,
+                                  docIndex,
+                                  "title",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Document title"
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                            />
+                            <input
+                              type="text"
+                              value={doc.downloadUrl}
+                              onChange={(e) =>
+                                updateModuleDocument(
+                                  mIndex,
+                                  docIndex,
+                                  "downloadUrl",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Document download URL"
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

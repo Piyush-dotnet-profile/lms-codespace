@@ -281,4 +281,162 @@ router.delete(
   },
 );
 
+// ============ USER MANAGEMENT ROUTES ============
+
+// GET /api/admin/users - Get all users
+router.get("/users", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find()
+      .select("_id name email role enrolledCourses createdAt")
+      .sort({ createdAt: -1 });
+
+    res.json(users);
+  } catch (error) {
+    console.error("Get users error:", error);
+    res.status(500).json({
+      message: "Error fetching users",
+      error: error.message,
+    });
+  }
+});
+
+// POST /api/admin/users - Create a new user
+router.post("/users", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Name, email, and password are required",
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({
+        message: "User with this email already exists",
+      });
+    }
+
+    const user = new User({
+      name,
+      email,
+      password,
+      role: role || "user",
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Create user error:", error);
+    res.status(500).json({
+      message: "Error creating user",
+      error: error.message,
+    });
+  }
+});
+
+// PATCH /api/admin/users/:id - Update user (role assignment, etc.)
+router.patch("/users/:id", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role } = req.body;
+
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid user ID",
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // Update allowed fields
+    if (name) user.name = name;
+    if (email) {
+      // Check if new email is already taken by another user
+      const existingUser = await User.findOne({
+        email,
+        _id: { $ne: id },
+      });
+      if (existingUser) {
+        return res.status(409).json({
+          message: "Email is already in use",
+        });
+      }
+      user.email = email;
+    }
+    if (role && ["user", "admin"].includes(role)) {
+      user.role = role;
+    }
+
+    await user.save();
+
+    res.json({
+      message: "User updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Update user error:", error);
+    res.status(500).json({
+      message: "Error updating user",
+      error: error.message,
+    });
+  }
+});
+
+// DELETE /api/admin/users/:id - Delete a user
+router.delete("/users/:id", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid user ID",
+      });
+    }
+
+    const user = await User.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      message: "User deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    res.status(500).json({
+      message: "Error deleting user",
+      error: error.message,
+    });
+  }
+});
+
 export default router;

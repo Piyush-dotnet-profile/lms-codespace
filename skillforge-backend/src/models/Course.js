@@ -3,14 +3,13 @@ import mongoose from "mongoose";
 const documentSchema = new mongoose.Schema(
   {
     title: String,
-    url: String,
     downloadUrl: String,
     uploadedAt: {
       type: Date,
       default: Date.now,
     },
   },
-  { _id: false },
+  { _id: true },
 );
 
 const videoSchema = new mongoose.Schema(

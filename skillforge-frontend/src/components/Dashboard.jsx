@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getCourseProgress } from "../utils/progressApi";
 
 export default function Dashboard() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
+  const [coursesProgress, setCoursesProgress] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Redirect to login if not authenticated
@@ -15,9 +17,9 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, navigate]);
 
-  // Fetch user's enrolled courses
+  // Fetch user's enrolled courses and their progress
   useEffect(() => {
-    const fetchCourses = async () => {
+    const fetchCoursesAndProgress = async () => {
       try {
         const token = localStorage.getItem("authToken");
         const response = await fetch(
@@ -32,6 +34,19 @@ export default function Dashboard() {
         if (response.ok) {
           const data = await response.json();
           setCourses(data);
+
+          // Fetch progress for each course
+          const progressMap = {};
+          for (const course of data) {
+            try {
+              const progressData = await getCourseProgress(course._id);
+              progressMap[course._id] = progressData;
+            } catch (err) {
+              console.error(`Failed to fetch progress for course ${course._id}:`, err);
+              progressMap[course._id] = { overallProgress: 0 };
+            }
+          }
+          setCoursesProgress(progressMap);
         }
       } catch (error) {
         console.error("Failed to fetch courses:", error);
@@ -41,7 +56,7 @@ export default function Dashboard() {
     };
 
     if (isAuthenticated) {
-      fetchCourses();
+      fetchCoursesAndProgress();
     }
   }, [isAuthenticated]);
 
@@ -108,20 +123,31 @@ export default function Dashboard() {
           </div>
           <div className="rounded-2xl border border-orange-100 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-orange-600 uppercase tracking-wide">
-              Progress
+              Overall Progress
             </p>
-            <p className="mt-3 text-3xl font-bold text-slate-900">0%</p>
+            <p className="mt-3 text-3xl font-bold text-slate-900">
+              {courses.length > 0
+                ? Math.round(
+                    Object.values(coursesProgress).reduce((sum, p) => sum + (p?.overallProgress || 0), 0) /
+                      courses.length,
+                  )
+                : 0}
+              %
+            </p>
             <p className="mt-2 text-sm text-slate-600">
-              Keep learning to improve
+              {Object.values(coursesProgress).filter((p) => p?.overallProgress === 100).length} of {courses.length}{" "}
+              courses completed
             </p>
           </div>
           <div className="rounded-2xl border border-orange-100 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-orange-600 uppercase tracking-wide">
-              Learning Hours
+              Active Courses
             </p>
-            <p className="mt-3 text-3xl font-bold text-slate-900">0h</p>
+            <p className="mt-3 text-3xl font-bold text-slate-900">
+              {Object.values(coursesProgress).filter((p) => p?.overallProgress > 0 && p?.overallProgress < 100).length}
+            </p>
             <p className="mt-2 text-sm text-slate-600">
-              Start your first course
+              In progress
             </p>
           </div>
         </div>
@@ -156,31 +182,47 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {courses.map((course) => (
-                <div
-                  key={course._id}
-                  className="rounded-2xl border border-orange-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-100/60"
-                >
-                  <div className="mb-4 h-2 w-16 rounded-full bg-orange-300" />
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {course.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {course.description}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
-                      {course.modules?.length || 0} Modules
-                    </span>
-                    <button
-                      onClick={() => navigate(`/courses/${course._id}/modules`)}
-                      className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700 transition hover:bg-orange-200"
-                    >
-                      Continue
-                    </button>
+              {courses.map((course) => {
+                const progress = coursesProgress[course._id]?.overallProgress || 0;
+                return (
+                  <div
+                    key={course._id}
+                    className="rounded-2xl border border-orange-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-100/60"
+                  >
+                    <div className="mb-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                          Progress
+                        </span>
+                        <span className="text-sm font-bold text-slate-900">{progress}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-orange-100">
+                        <div
+                          className="h-full rounded-full bg-orange-600 transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {course.title}
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-600">
+                      {course.description}
+                    </p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                        {course.modules?.length || 0} Modules
+                      </span>
+                      <button
+                        onClick={() => navigate(`/courses/${course._id}/modules`)}
+                        className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700 transition hover:bg-orange-200"
+                      >
+                        Continue
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
