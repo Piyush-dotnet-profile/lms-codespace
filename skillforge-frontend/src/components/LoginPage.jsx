@@ -7,11 +7,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
-  if (isAuthenticated) {
-    navigate("/dashboard");
+  if (isAuthenticated && user) {
+    if (user.role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -28,7 +32,8 @@ export default function LoginPage() {
     const result = await login(email, password);
 
     if (result.success) {
-      navigate("/");
+      // Redirect based on role - will handle in useEffect
+      // The redirect will happen automatically when user state updates
     } else {
       setError(result.error || "Login failed. Please try again.");
     }

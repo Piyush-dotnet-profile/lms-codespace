@@ -3,7 +3,7 @@ import Course from "../models/Course.js";
 import User from "../models/User.js";
 import { authenticateToken, optionalAuth } from "../middleware/auth.js";
 import { drive } from "../config/drive.js";
-
+import { pipeline } from "node:stream/promises";
 const router = express.Router();
 
 // GET /api/courses/my-courses - Get user's enrolled courses
@@ -251,14 +251,21 @@ router.post(
           moduleProgress.videoProgress,
           videoProgress,
         );
+        // Also update overall progress if video progress is higher
+        if (videoProgress > (moduleProgress.progress || 0)) {
+          moduleProgress.progress = videoProgress;
+        }
       }
 
       // Track document download
-      if (
-        documentId &&
-        !moduleProgress.documentsDownloaded.includes(documentId)
-      ) {
-        moduleProgress.documentsDownloaded.push(documentId);
+      if (documentId) {
+        const docIdStr = String(documentId);
+        const isAlreadyDownloaded = moduleProgress.documentsDownloaded.some(
+          (id) => String(id) === docIdStr,
+        );
+        if (!isAlreadyDownloaded) {
+          moduleProgress.documentsDownloaded.push(documentId);
+        }
       }
 
       // Mark as completed if progress is 100%
@@ -281,6 +288,8 @@ router.post(
       );
 
       user.progress.set(courseId, courseProgress);
+      // Mark progress field as modified so Mongoose persists the Map changes
+      user.markModified('progress');
       await user.save();
 
       res.json({
@@ -342,7 +351,7 @@ router.get("/:courseId/progress", authenticateToken, async (req, res) => {
       };
 
       moduleProgress.push({
-        moduleId: module._id,
+        moduleId: module._id.toString(),
         title: module.title,
         ...modProgress,
       });
@@ -668,74 +677,58 @@ router.post("/:courseId/quiz", authenticateToken, async (req, res) => {
 });
 
 // Express route idea
+
 router.get("/media/drive/:fileId", async (req, res) => {
   try {
     const { fileId } = req.params;
-    const range = req.headers.range;
 
-    // Prevent cache issues
-    res.setHeader(
-      "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-    );
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-
-    // Get file metadata
     const meta = await drive.files.get({
       fileId,
-      fields: "size,mimeType",
+      fields: "mimeType",
     });
 
-    const fileSize = Number(meta.data.size);
-
-    // Normalize mime type
     const mimeType = meta.data.mimeType?.startsWith("video/")
       ? meta.data.mimeType
       : "video/mp4";
 
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const driveRes = await drive.files.get(
+      { fileId, alt: "media" },
+      { responseType: "stream" },
+    );
 
-      const response = await drive.files.get(
-        { fileId, alt: "media" },
-        {
-          responseType: "stream",
-          headers: {
-            Range: `bytes=${start}-${end}`,
-          },
-        },
-      );
+    res.status(200);
+    res.set({
+      "Content-Type": mimeType,
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Accept-Ranges": "none",
+    });
 
-      res.writeHead(206, {
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": end - start + 1,
-        "Content-Type": mimeType,
-      });
+    res.flushHeaders();
 
-      response.data.pipe(res);
-    } else {
-      const response = await drive.files.get(
-        { fileId, alt: "media" },
-        {
-          responseType: "stream",
-        },
-      );
+    driveRes.data.on("error", (err) => {
+      console.error("Drive stream error:", err);
+      if (!res.headersSent) res.status(502);
+      res.destroy(err);
+    });
 
-      res.writeHead(200, {
-        "Content-Length": fileSize,
-        "Content-Type": mimeType,
-        "Accept-Ranges": "bytes",
-      });
+    req.on("close", () => {
+      driveRes.data.destroy();
+    });
 
-      response.data.pipe(res);
-    }
+    await pipeline(driveRes.data, res);
   } catch (error) {
     console.error("Streaming error:", error);
-    res.status(500).json({ message: "Unable to stream video" });
+    if (!res.headersSent) {
+      res.status(502).json({
+        message: "Unable to stream video",
+        error: error.message,
+      });
+    } else {
+      res.destroy(error);
+    }
   }
 });
 

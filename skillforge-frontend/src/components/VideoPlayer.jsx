@@ -36,7 +36,9 @@ export default function VideoPlayer({
       setCurrentTime(current);
 
       if (dur > 0) {
-        const newProgress = Math.round((current / dur) * 100);
+        // If video is very close to end or at end, mark as 100%
+        const newProgress =
+          current >= dur * 0.99 ? 100 : Math.round((current / dur) * 100);
         setProgress(newProgress);
       }
     }
@@ -81,10 +83,16 @@ export default function VideoPlayer({
   // Track on pause/end
   useEffect(() => {
     const handlePause = () => {
-      if (progress > 0) {
-        updateVideoProgress(courseId, moduleId, progress)
+      const finalProgress = Math.max(
+        progress,
+        videoRef.current?.currentTime >= videoRef.current?.duration * 0.99
+          ? 100
+          : progress,
+      );
+      if (finalProgress > 0) {
+        updateVideoProgress(courseId, moduleId, finalProgress)
           .then(() => {
-            onProgressUpdate?.(progress);
+            onProgressUpdate?.(finalProgress);
           })
           .catch((error) =>
             console.error("Failed to track video progress:", error),
@@ -92,10 +100,22 @@ export default function VideoPlayer({
       }
     };
 
+    const handleEnded = () => {
+      // Track 100% when video ends
+      updateVideoProgress(courseId, moduleId, 100)
+        .then(() => {
+          setProgress(100);
+          onProgressUpdate?.(100);
+        })
+        .catch((error) =>
+          console.error("Failed to track video progress:", error),
+        );
+    };
+
     const video = videoRef.current;
     if (video) {
       video.addEventListener("pause", handlePause);
-      video.addEventListener("ended", handlePause);
+      video.addEventListener("ended", handleEnded);
     }
 
     return () => {
@@ -118,7 +138,7 @@ export default function VideoPlayer({
       <div className="relative bg-black aspect-video">
         <video
           ref={videoRef}
-          src={`/api/courses/media/drive/${video.url}`}
+          src={video.url}
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           className="w-full h-full"

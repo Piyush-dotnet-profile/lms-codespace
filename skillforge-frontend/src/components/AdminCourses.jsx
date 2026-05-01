@@ -214,7 +214,7 @@ export default function AdminCourses() {
                   <div>
                     <p className="text-sm text-slate-600">Rating</p>
                     <p className="text-2xl font-bold text-slate-900">
-                      {course.rating?.toFixed(1) || "0"}⭐
+                      {course.rating?.toFixed(1) || "3.5"}⭐
                     </p>
                   </div>
                 </div>

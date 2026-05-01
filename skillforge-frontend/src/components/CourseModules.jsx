@@ -90,11 +90,13 @@ export default function CourseModules() {
   }, [courseProgress]);
 
   const getModuleProgress = (module) => {
-    if (!courseProgress) return 0;
+    if (!courseProgress || !courseProgress.modules) return 0;
 
-    const moduleData = courseProgress.modules.find(
-      (m) => m.moduleId === module._id,
-    );
+    const moduleIdStr = String(module._id || module.id);
+    const moduleData = courseProgress.modules.find((m) => {
+      const mIdStr = String(m.moduleId);
+      return mIdStr === moduleIdStr;
+    });
 
     if (moduleData && typeof moduleData.progress === "number") {
       return moduleData.progress;
@@ -300,9 +302,11 @@ export default function CourseModules() {
                 const description = module.description || module.summary || "";
                 const progress = getModuleProgress(module);
 
-                const moduleData = courseProgress?.modules.find(
-                  (m) => m.moduleId === module._id,
-                );
+                const moduleIdStr = String(module._id || module.id);
+                const moduleData = courseProgress?.modules.find((m) => {
+                  const mIdStr = String(m.moduleId);
+                  return mIdStr === moduleIdStr;
+                });
                 const completed = moduleData?.completed || false;
 
                 return (

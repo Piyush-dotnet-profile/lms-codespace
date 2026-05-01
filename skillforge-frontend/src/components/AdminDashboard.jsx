@@ -2,111 +2,23 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AdminCourses from "./AdminCourses";
+import AdminUsers from "./AdminUsers";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("courses");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  // Check if user is admin
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        if (!isAuthenticated) {
-          navigate("/login");
-          return;
-        }
-
-        const token = localStorage.getItem("authToken");
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth/me`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          navigate("/login");
-          return;
-        }
-
-        const userData = await response.json();
-
-        // Check if user is admin
-        if (userData.role !== "admin") {
-          setError("You do not have permission to access the admin panel");
-          setTimeout(() => navigate("/"), 2000);
-          return;
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Auth check error:", err);
-        setError("Failed to verify admin access");
-        setTimeout(() => navigate("/"), 2000);
-      }
-    };
-
-    checkAdmin();
-  }, [isAuthenticated, navigate]);
-
-  if (!isAuthenticated) return null;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FFF9F4]">
-        <div className="text-center">
-          <svg
-            className="w-12 h-12 animate-spin text-orange-600 mx-auto"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 12a8 8 0 018-8V0c4.418 0 8 3.582 8 8h-2z"
-            />
-          </svg>
-          <p className="mt-4 text-slate-600">Loading admin panel...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FFF9F4]">
-        <div className="text-center">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 mb-4">
-            <svg
-              className="w-8 h-8 text-red-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">
-            Access Denied
-          </h2>
-          <p className="text-slate-600">{error}</p>
-          <p className="text-sm text-slate-500 mt-2">Redirecting...</p>
-        </div>
-      </div>
-    );
-  }
+  if (!isAuthenticated || !user) return null;
+  //         <h2 className="text-xl font-bold text-slate-900 mb-2">
+  //           Access Denied
+  //         </h2>
+  //         <p className="text-slate-600">{error}</p>
+  //         <p className="text-sm text-slate-500 mt-2">Redirecting...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-[#FFF9F4] text-slate-800">
@@ -160,6 +72,16 @@ export default function AdminDashboard() {
               Courses
             </button>
             <button
+              onClick={() => setActiveTab("users")}
+              className={`pb-4 px-1 font-semibold border-b-2 transition ${
+                activeTab === "users"
+                  ? "border-orange-600 text-orange-600"
+                  : "border-transparent text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Users
+            </button>
+            <button
               onClick={() => setActiveTab("stats")}
               className={`pb-4 px-1 font-semibold border-b-2 transition ${
                 activeTab === "stats"
@@ -174,6 +96,7 @@ export default function AdminDashboard() {
 
         {/* Tab Content */}
         {activeTab === "courses" && <AdminCourses />}
+        {activeTab === "users" && <AdminUsers />}
         {activeTab === "stats" && (
           <div className="rounded-3xl border border-orange-100 bg-white p-8 shadow-sm text-center">
             <p className="text-slate-600">Statistics feature coming soon...</p>

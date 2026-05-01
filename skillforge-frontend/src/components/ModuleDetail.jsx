@@ -70,10 +70,14 @@ export default function ModuleDetail() {
         // Fetch progress data from API
         try {
           const progressData = await getCourseProgress(courseId);
-          const currentModuleProgress = progressData.modules.find(
-            (m) => m.moduleId === matchedModule._id,
-          );
-          setModuleProgress(currentModuleProgress);
+          if (progressData && progressData.modules) {
+            const moduleIdStr = String(matchedModule._id);
+            const currentModuleProgress = progressData.modules.find((m) => {
+              const mIdStr = String(m.moduleId);
+              return mIdStr === moduleIdStr;
+            });
+            setModuleProgress(currentModuleProgress || null);
+          }
         } catch (progressErr) {
           console.error("Failed to fetch progress:", progressErr);
           // Continue without progress data
@@ -131,10 +135,14 @@ export default function ModuleDetail() {
 
       // Refresh progress data
       const progressData = await getCourseProgress(courseId);
-      const currentModuleProgress = progressData.modules.find(
-        (m) => m.moduleId === module._id,
-      );
-      setModuleProgress(currentModuleProgress);
+      if (progressData && progressData.modules && module) {
+        const moduleIdStr = String(module._id);
+        const currentModuleProgress = progressData.modules.find((m) => {
+          const mIdStr = String(m.moduleId);
+          return mIdStr === moduleIdStr;
+        });
+        setModuleProgress(currentModuleProgress || null);
+      }
 
       alert("Module marked as completed! 🎉");
     } catch (err) {
@@ -247,10 +255,26 @@ export default function ModuleDetail() {
                     moduleId={moduleId}
                     video={module.video}
                     onProgressUpdate={(videoProgress) => {
-                      setModuleProgress((prev) => ({
-                        ...prev,
-                        videoProgress,
-                      }));
+                      // Update both videoProgress and overall progress
+                      setModuleProgress((prev) => {
+                        if (!prev) {
+                          return {
+                            progress: videoProgress,
+                            videoProgress,
+                            completed: videoProgress >= 100,
+                            completedAt:
+                              videoProgress >= 100 ? new Date() : null,
+                            documentsDownloaded: [],
+                            moduleId: moduleId,
+                          };
+                        }
+                        return {
+                          ...prev,
+                          videoProgress,
+                          // Update overall progress based on video progress if it's higher
+                          progress: Math.max(prev.progress || 0, videoProgress),
+                        };
+                      });
                     }}
                   />
                 </div>
