@@ -70,12 +70,22 @@ export default function ModuleDetail() {
         // Fetch progress data from API
         try {
           const progressData = await getCourseProgress(courseId);
+          console.log("ModuleDetail - Progress Data:", {
+            courseId,
+            moduleId: matchedModule._id,
+            progressData,
+            modules: progressData?.modules,
+          });
+          
           if (progressData && progressData.modules) {
             const moduleIdStr = String(matchedModule._id);
+            console.log("Looking for module progress:", moduleIdStr);
             const currentModuleProgress = progressData.modules.find((m) => {
               const mIdStr = String(m.moduleId);
+              console.log(`Comparing: ${mIdStr} === ${moduleIdStr}`, mIdStr === moduleIdStr);
               return mIdStr === moduleIdStr;
             });
+            console.log("Found progress:", currentModuleProgress);
             setModuleProgress(currentModuleProgress || null);
           }
         } catch (progressErr) {

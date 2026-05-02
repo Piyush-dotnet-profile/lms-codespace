@@ -54,6 +54,11 @@ export default function CourseModules() {
         // Fetch progress data from API
         try {
           const progressData = await getCourseProgress(courseId);
+          console.log("Course Progress Data:", {
+            courseId,
+            progressData,
+            modules: progressData?.modules,
+          });
           setCourseProgress(progressData);
         } catch (progressErr) {
           console.error("Failed to fetch progress:", progressErr);
@@ -90,13 +95,22 @@ export default function CourseModules() {
   }, [courseProgress]);
 
   const getModuleProgress = (module) => {
-    if (!courseProgress || !courseProgress.modules) return 0;
+    if (!courseProgress || !courseProgress.modules) {
+      console.log("No course progress available");
+      return 0;
+    }
 
     const moduleIdStr = String(module._id || module.id);
+    console.log("Looking for progress for module:", moduleIdStr);
+    console.log("Available modules in courseProgress:", courseProgress.modules);
+
     const moduleData = courseProgress.modules.find((m) => {
       const mIdStr = String(m.moduleId);
+      console.log(`Comparing: ${mIdStr} === ${moduleIdStr}`, mIdStr === moduleIdStr);
       return mIdStr === moduleIdStr;
     });
+
+    console.log("Found module data:", moduleData);
 
     if (moduleData && typeof moduleData.progress === "number") {
       return moduleData.progress;
