@@ -6,6 +6,46 @@ import { drive } from "../config/drive.js";
 import { pipeline } from "node:stream/promises";
 const router = express.Router();
 
+// Helper function to safely get course progress
+const getSafeCourseProgress = (user, courseIdStr) => {
+  if (!user || !user.progress) {
+    return {
+      modules: new Map(),
+      overallProgress: 0,
+      quizCompleted: false,
+      quizScore: null,
+      quizAttempts: [],
+      enrolledAt: new Date(),
+    };
+  }
+
+  let courseProgress = user.progress.get(courseIdStr);
+  
+  if (!courseProgress) {
+    // Initialize if not exist
+    courseProgress = {
+      modules: new Map(),
+      overallProgress: 0,
+      quizCompleted: false,
+      quizScore: null,
+      quizAttempts: [],
+      enrolledAt: new Date(),
+    };
+  }
+
+  // Ensure modules is a Map
+  if (!(courseProgress.modules instanceof Map)) {
+    const modulesData = courseProgress.modules || {};
+    courseProgress.modules = new Map(
+      typeof modulesData === 'object' 
+        ? Object.entries(modulesData) 
+        : []
+    );
+  }
+
+  return courseProgress;
+};
+
 // GET /api/courses/my-courses - Get user's enrolled courses
 router.get("/my-courses/enrolled", authenticateToken, async (req, res) => {
   try {
@@ -214,8 +254,9 @@ router.post(
       }
 
       // Initialize progress for this course if not exists
-      if (!user.progress.has(courseId)) {
-        user.progress.set(courseId, {
+      const courseIdStr = String(courseId);
+      if (!user.progress.has(courseIdStr)) {
+        user.progress.set(courseIdStr, {
           modules: new Map(),
           overallProgress: 0,
           quizCompleted: false,
@@ -225,11 +266,12 @@ router.post(
         });
       }
 
-      const courseProgress = user.progress.get(courseId);
+      const courseProgress = user.progress.get(courseIdStr);
 
       // Initialize module progress if not exists
-      if (!courseProgress.modules.has(moduleId)) {
-        courseProgress.modules.set(moduleId, {
+      const moduleIdStr = String(moduleId);
+      if (!courseProgress.modules.has(moduleIdStr)) {
+        courseProgress.modules.set(moduleIdStr, {
           progress: 0,
           videoProgress: 0,
           completed: false,
@@ -238,7 +280,7 @@ router.post(
         });
       }
 
-      const moduleProgress = courseProgress.modules.get(moduleId);
+      const moduleProgress = courseProgress.modules.get(moduleIdStr);
 
       // Update module progress
       if (progress !== undefined) {
@@ -287,10 +329,17 @@ router.post(
         totalModuleProgress / totalModules,
       );
 
-      user.progress.set(courseId, courseProgress);
+      user.progress.set(courseIdStr, courseProgress);
       // Mark progress field as modified so Mongoose persists the Map changes
       user.markModified('progress');
       await user.save();
+
+      console.log("=== POST /progress Debug ===");
+      console.log("Progress saved for module:", moduleIdStr);
+      console.log("Module progress:", moduleProgress);
+      console.log("Overall progress:", courseProgress.overallProgress);
+      console.log("Total modules:", totalModules);
+      console.log("Completed modules:", completedModules);
 
       res.json({
         message: "Progress updated successfully",
@@ -325,24 +374,39 @@ router.get("/:courseId/progress", authenticateToken, async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    if (!user.progress.has(courseId)) {
-      // Initialize default progress if user hasn't started
-      user.progress.set(courseId, {
-        modules: new Map(),
-        overallProgress: 0,
-        quizCompleted: false,
-        quizScore: null,
-        quizAttempts: [],
-        enrolledAt: new Date(),
-      });
-    }
+    // Standardize courseId to string for consistent Map key usage
+    const courseIdStr = String(courseId);
 
-    const courseProgress = user.progress.get(courseId);
+    console.log("=== GET /progress Debug ===");
+    console.log("User ID:", userId);
+    console.log("Course ID:", courseIdStr);
+
+    // Use helper to safely get course progress
+    const courseProgress = getSafeCourseProgress(user, courseIdStr);
+
+    console.log("Course progress retrieved:", {
+      overallProgress: courseProgress.overallProgress,
+      moduleKeys: Array.from(courseProgress.modules.keys()),
+      moduleCount: courseProgress.modules.size,
+    });
 
     // Build detailed progress response with module status
     const moduleProgress = [];
     course.modules.forEach((module) => {
-      const modProgress = courseProgress.modules.get(module._id.toString()) || {
+      const moduleIdStr = module._id.toString();
+      
+      let modProgress = courseProgress.modules.get(moduleIdStr);
+      if (!modProgress) {
+        // Try to find by checking all keys in case of type mismatch
+        for (const [key, value] of courseProgress.modules.entries()) {
+          if (String(key) === moduleIdStr) {
+            modProgress = value;
+            break;
+          }
+        }
+      }
+      
+      modProgress = modProgress || {
         progress: 0,
         videoProgress: 0,
         completed: false,
@@ -350,15 +414,25 @@ router.get("/:courseId/progress", authenticateToken, async (req, res) => {
         documentsDownloaded: [],
       };
 
+      console.log(`Module ${module.title} (${moduleIdStr}):`, {
+        progress: modProgress.progress,
+        completed: modProgress.completed,
+      });
+
       moduleProgress.push({
-        moduleId: module._id.toString(),
+        moduleId: moduleIdStr,
         title: module.title,
         ...modProgress,
       });
     });
 
+    console.log("Sending response with module progress data:");
+    console.log("- Total modules:", moduleProgress.length);
+    console.log("- Modules with progress > 0:", moduleProgress.filter(m => m.progress > 0).length);
+    console.log("- Overall progress:", courseProgress.overallProgress);
+
     res.json({
-      courseId,
+      courseId: courseIdStr,
       overallProgress: courseProgress.overallProgress,
       quizCompleted: courseProgress.quizCompleted,
       quizScore: courseProgress.quizScore,
@@ -408,7 +482,8 @@ router.get(
 
       // Check if previous module meets unlock percentage
       const prevModule = course.modules[moduleIndex - 1];
-      const courseProgress = user.progress.get(courseId);
+      const courseIdStr = String(courseId);
+      const courseProgress = user.progress.get(courseIdStr);
 
       if (!courseProgress) {
         return res.json({ isUnlocked: false });
@@ -464,7 +539,8 @@ router.get(
           .json({ message: "Quiz not available for this course" });
       }
 
-      const courseProgress = user.progress.get(courseId);
+      const courseIdStr = String(courseId);
+      const courseProgress = user.progress.get(courseIdStr);
       if (!courseProgress) {
         return res.json({
           isUnlocked: false,
