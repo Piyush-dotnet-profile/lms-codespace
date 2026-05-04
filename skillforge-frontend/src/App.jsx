@@ -7,6 +7,7 @@ import SignupPage from "./components/SignupPage";
 import Dashboard from "./components/Dashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import ExploreCourses from "./components/Courses";
 import CourseDetails from "./components/CourseDetails";
 import CourseModules from "./components/CourseModules";
@@ -21,19 +22,62 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/courses" element={<ExploreCourses />} />
-          <Route path="/courses/:courseId" element={<CourseDetails />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute requiredRole="user">
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/courses"
+            element={
+              <ProtectedRoute>
+                <ExploreCourses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/courses/:courseId"
+            element={
+              <ProtectedRoute>
+                <CourseDetails />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/courses/:courseId/modules"
-            element={<CourseModules />}
+            element={
+              <ProtectedRoute>
+                <CourseModules />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/courses/:courseId/modules/:moduleId"
-            element={<ModuleDetail />}
+            element={
+              <ProtectedRoute>
+                <ModuleDetail />
+              </ProtectedRoute>
+            }
           />
-          <Route path="/courses/:courseId/quiz" element={<QuizPage />} />
+          <Route
+            path="/courses/:courseId/quiz"
+            element={
+              <ProtectedRoute>
+                <QuizPage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>
