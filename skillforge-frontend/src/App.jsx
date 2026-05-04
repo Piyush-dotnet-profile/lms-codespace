@@ -57,7 +57,7 @@ function App() {
           <Route
             path="/courses/:courseId/modules"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <CourseModules />
               </ProtectedRoute>
             }
@@ -65,7 +65,7 @@ function App() {
           <Route
             path="/courses/:courseId/modules/:moduleId"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <ModuleDetail />
               </ProtectedRoute>
             }
@@ -73,7 +73,7 @@ function App() {
           <Route
             path="/courses/:courseId/quiz"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="user">
                 <QuizPage />
               </ProtectedRoute>
             }

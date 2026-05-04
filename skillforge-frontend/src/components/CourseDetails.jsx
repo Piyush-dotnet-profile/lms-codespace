@@ -201,21 +201,22 @@ export default function CourseDetails() {
                 >
                   Back to Courses
                 </button>
-                {isEnrolled ? (
-                  <button
-                    onClick={() => navigate(`/courses/${courseId}/modules`)}
-                    className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white hover:text-orange-700"
-                  >
-                    Continue Course
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleEnroll}
-                    className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white hover:text-orange-700"
-                  >
-                    Enroll
-                  </button>
-                )}
+                {user?.role === "user" &&
+                  (isEnrolled ? (
+                    <button
+                      onClick={() => navigate(`/courses/${courseId}/modules`)}
+                      className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white hover:text-orange-700"
+                    >
+                      Continue Course
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleEnroll}
+                      className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white hover:text-orange-700"
+                    >
+                      Enroll
+                    </button>
+                  ))}
               </div>
             </div>
 
